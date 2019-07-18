@@ -203,25 +203,25 @@ ET模式下的accept问题
 
 对于写，只要buffer还有空间且用户请求写的数据还未写完，就一直写。
 
-详见http://blog.chinaunix.net/uid-28541347-id-4308612.html  
-有两种实现方法：
-方法一
-(1) 每次读入操作后（read，recv），用户主动epoll_mod IN事件，此时只要该fd的缓冲还有数据可以读，则epoll_wait会返回读就绪。
-(2) 每次输出操作后（write，send），用户主动epoll_mod OUT事件，此时只要该该fd的缓冲可以发送数据（发送buffer不满），则epoll_wait就会返回写就绪（有时候采用该机制通知epoll_wai醒过来）。
-原理为：当buffer中有数据可读（即buffer不空）且用户对相应fd进行epoll_mod IN事件时ET模式返回读就绪，当buffer中有可写空间（即buffer不满）且用户对相应fd进行epoll_mod OUT事件时返回写就绪。
+详见http://blog.chinaunix.net/uid-28541347-id-4308612.html    
+有两种实现方法：  
+方法一  
+(1) 每次读入操作后（read，recv），用户主动epoll_mod IN事件，此时只要该fd的缓冲还有数据可以读，则epoll_wait会返回读就绪。  
+(2) 每次输出操作后（write，send），用户主动epoll_mod OUT事件，此时只要该该fd的缓冲可以发送数据（发送buffer不满），则epoll_wait就会返回写就绪（有时候采用该机制通知epoll_wai醒过来）。  
+原理为：当buffer中有数据可读（即buffer不空）且用户对相应fd进行epoll_mod IN事件时ET模式返回读就绪，当buffer中有可写空间（即buffer不满）且用户对相应fd进行epoll_mod OUT事件时返回写就绪。  
 
-此方法实际上就和水平触发的效果一样了，并没有发挥边缘触发的优势，不推荐
+此方法实际上就和水平触发的效果一样了，并没有发挥边缘触发的优势，不推荐  
 
-总结：
+总结：  
 
-LT：水平触发，效率会低于ET触发，尤其在大并发，大流量的情况下。但是LT对代码编写要求比较低，不容易出现问题。LT模式服务编写上的表现是：只要有数据没有被获取，内核就不断通知你，因此不用担心事件丢失的情况。
+LT：水平触发，效率会低于ET触发，尤其在大并发，大流量的情况下。但是LT对代码编写要求比较低，不容易出现问题。LT模式服务编写上的表现是：只要有数据没有被获取，内核就不断通知你，因此不用担心事件丢失的情况。  
 
-ET：边缘触发，效率非常高，在并发，大流量的情况下，会比LT少很多epoll的系统调用，因此效率高。但是对编程要求高，需要细致的处理每个请求，否则容易发生丢失事件的情况。
+ET：边缘触发，效率非常高，在并发，大流量的情况下，会比LT少很多epoll的系统调用，因此效率高。但是对编程要求高，需要细致的处理每个请求，否则容易发生丢失事件的情况。  
 
-从本质上讲：与LT相比，ET模型是通过减少系统调用来达到提高并行效率的。
+从本质上讲：与LT相比，ET模型是通过减少系统调用来达到提高并行效率的。  
 
-参考了以下的博客，致以感谢！  
-Epoll模型详解  http://blog.chinaunix.net/uid-28541347-id-4288802.html  
-Linux下的I/O复用与epoll详解  https://www.cnblogs.com/lojunren/p/3856290.html  
-彻底学会使用epoll  http://blog.chinaunix.net/uid-28541347-id-4273856.html  
-IO多路复用的三种机制Select，Poll，Epoll  https://www.jianshu.com/p/397449cadc9a  
+参考了以下的博客，致以感谢！    
+Epoll模型详解  http://blog.chinaunix.net/uid-28541347-id-4288802.html    
+Linux下的I/O复用与epoll详解  https://www.cnblogs.com/lojunren/p/3856290.html    
+彻底学会使用epoll  http://blog.chinaunix.net/uid-28541347-id-4273856.html    
+IO多路复用的三种机制Select，Poll，Epoll  https://www.jianshu.com/p/397449cadc9a    
