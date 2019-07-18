@@ -1,4 +1,9 @@
 学习之余整理了网上的很多关于epoll的博客
+参考了以下的博客，致以感谢！    
+Epoll模型详解  http://blog.chinaunix.net/uid-28541347-id-4288802.html    
+Linux下的I/O复用与epoll详解  https://www.cnblogs.com/lojunren/p/3856290.html    
+彻底学会使用epoll  http://blog.chinaunix.net/uid-28541347-id-4273856.html    
+IO多路复用的三种机制Select，Poll，Epoll  https://www.jianshu.com/p/397449cadc9a    
 **1.基本概念**
 
 **用户空间 / 内核空间**
@@ -191,7 +196,7 @@ ET模式详解
 
 ET模式评价：边缘触发，效率非常高，在并发，大流量的情况下，会比LT少很多epoll的系统调用，因此效率高。但是对编程要求高，需要细致的处理每个请求，否则容易发生丢失事件的情况。
 
-#ET模式下的读写问题#
+**ET模式下的读写问题** 
 详见http://blog.chinaunix.net/uid-28541347-id-4308612.html    
 为了避免ET模式下读写时没有正确处理缓冲区，有两种处理方法：  
 方法一  
@@ -210,11 +215,14 @@ ET模式评价：边缘触发，效率非常高，在并发，大流量的情况
 读操作返回EAGAIN表明已经写完，写操作返回EAGAIN就终止写，但是返回EAGAIN只能说名当前发送缓冲区已满不可写，并不能保证用户（或服务端）要求写的数据已经写完。那么如何保证对非阻塞的套接字写够请求的字节数才返回呢（阻塞的套接字直到将请求写的字节数写完才返回）?  
 我们需要封装socket_write()的函数用来处理这种情况,该函数会尽量将数据写完再返回，返回-1表示出错。在socket_write()内部,当写缓冲已满(send()返回-1,且errno为EAGAIN),调用usleep等待后再重试.  
 
-#ET模式下的accept问题#
+**ET模式下的accept问题**
 
 请思考以下一种场景：在某一时刻，有多个连接同时到达，服务器的 TCP 就绪队列瞬间积累多个就绪连接，由于是边缘触发模式，epoll 只会通知一次，accept 只处理一个连接，导致 TCP 就绪队列中剩下的连接都得不到处理。在这种情形下，我们应该如何有效的处理呢？
 
 解决的方法是：解决办法是用 while 循环抱住 accept 调用，处理完 TCP 就绪队列中的所有连接后再退出循环。如何知道是否处理完就绪队列中的所有连接呢？ accept  返回 -1 并且 errno 设置为 EAGAIN 就表示所有连接都处理完。
+
+扩展：服务端使用多路转接技术（select，poll，epoll等）时，accept应工作在非阻塞模式。   
+原因：如果accept工作在阻塞模式，考虑这种情况： TCP 连接被客户端夭折，即在服务器调用 accept 之前（此时select等已经返回连接到达读就绪），客户端主动发送 RST 终止连接，导致刚刚建立的连接从就绪队列中移出，如果套接口被设置成阻塞模式，服务器就会一直阻塞在 accept 调用上，直到其他某个客户建立一个新的连接为止。但是在此期间，服务器单纯地阻塞在accept 调用上（实际应该阻塞在select上），就绪队列中的其他描述符都得不到处理。  
 
 总结：  
 
@@ -232,8 +240,4 @@ ET：边缘触发，效率非常高，在并发，大流量的情况下，会比
 
 从本质上讲：与LT相比，ET模型是通过减少系统调用来达到提高并行效率的。  
 
-参考了以下的博客，致以感谢！    
-Epoll模型详解  http://blog.chinaunix.net/uid-28541347-id-4288802.html    
-Linux下的I/O复用与epoll详解  https://www.cnblogs.com/lojunren/p/3856290.html    
-彻底学会使用epoll  http://blog.chinaunix.net/uid-28541347-id-4273856.html    
-IO多路复用的三种机制Select，Poll，Epoll  https://www.jianshu.com/p/397449cadc9a    
+
