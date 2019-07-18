@@ -79,25 +79,25 @@ int epoll\_create(int size);
 
 1）epoll\_create函数创建一个epoll句柄，参数size表明内核要监听的描述符数量。调用成功时返回一个epoll句柄描述符，失败时返回-1。这里的size是早期设计时产生的，那时所有需监测的文件描述符放入hash表中，而现在时放入红黑树中，所以该参数现在并没有实际用到，但是必须
 
-int epoll\_ctl(int epfd, int op, int fd, struct epoll\_event \*event);
+int epoll_ctl(int epfd, int op, int fd, struct epoll\_event \*event);
 
-2）epoll\_ctl函数注册要监听的事件类型。四个参数解释如下：
+2）epoll_ctl函数注册要监听的事件类型。四个参数解释如下：
 
 - epfd 表示epoll句柄
 - op 表示fd操作类型，有如下3种
-  - EPOLL\_CTL\_ADD 注册新的fd到epfd中
-  - EPOLL\_CTL\_MOD 修改已注册的fd的监听事件
-  - EPOLL\_CTL\_DEL 从epfd中删除一个fd
+  - EPOLL_CTL_ADD 注册新的fd到epfd中
+  - EPOLL_CTL_MOD 修改已注册的fd的监听事件
+  - EPOLL_CTL_DEL 从epfd中删除一个fd
 - fd 是要监听的描述符
 - event 表示要监听的事件
 
-epoll\_event 结构体定义如下：
+epoll_event 结构体定义如下：
 
-struct epoll\_event {
+struct epoll_event {
 
-    \_\_uint32\_t events;  /\* Epoll events \*/
+    __uint32_t events;  \* Epoll events \*
 
-    epoll\_data\_t data;  /\* User data variable \*/
+    epoll_data_t data;  \* User data variable \*
 
 };
 
