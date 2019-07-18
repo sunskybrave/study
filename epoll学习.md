@@ -76,11 +76,11 @@ Linux中提供的epoll相关函数如下：
 
 int epoll\_create(int size);
 
-**1.** epoll\_create** 函数创建一个epoll句柄，参数size表明内核要监听的描述符数量。调用成功时返回一个epoll句柄描述符，失败时返回-1。这里的size是早期设计时产生的，那时所有需监测的文件描述符放入hash表中，而现在时放入红黑树中，所以该参数现在并没有实际用到，但是必须
+1.epoll\_create函数创建一个epoll句柄，参数size表明内核要监听的描述符数量。调用成功时返回一个epoll句柄描述符，失败时返回-1。这里的size是早期设计时产生的，那时所有需监测的文件描述符放入hash表中，而现在时放入红黑树中，所以该参数现在并没有实际用到，但是必须
 
 int epoll\_ctl(int epfd, int op, int fd, struct epoll\_event \*event);
 
-**2. epoll\_ctl** 函数注册要监听的事件类型。四个参数解释如下：
+2.epoll\_ctl函数注册要监听的事件类型。四个参数解释如下：
 
 - epfd 表示epoll句柄
 - op 表示fd操作类型，有如下3种
