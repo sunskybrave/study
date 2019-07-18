@@ -75,9 +75,9 @@ epoll\_wait的工作流程：
 
 Linux中提供的epoll相关函数如下：
 
-int epoll\_create(int size);
+int epoll_create(int size);
 
-1）epoll\_create函数创建一个epoll句柄，参数size表明内核要监听的描述符数量。调用成功时返回一个epoll句柄描述符，失败时返回-1。这里的size是早期设计时产生的，那时所有需监测的文件描述符放入hash表中，而现在时放入红黑树中，所以该参数现在并没有实际用到，但是必须
+1）epoll_create函数创建一个epoll句柄，参数size表明内核要监听的描述符数量。调用成功时返回一个epoll句柄描述符，失败时返回-1。这里的size是早期设计时产生的，那时所有需监测的文件描述符放入hash表中，而现在时放入红黑树中，所以该参数现在并没有实际用到，但是必须
 
 int epoll_ctl(int epfd, int op, int fd, struct epoll\_event \*event);
 
@@ -101,17 +101,17 @@ struct epoll_event {
 
 };
 
-typedef union epoll\_data {
+typedef union epoll_data {
 
-    void \*ptr;
+    void *ptr;
 
     int fd;
 
-    \_\_uint32\_t u32;
+    __uint32_t u32;
 
-    \_\_uint64\_t u64;
+    __uint64_t u64;
 
-} epoll\_data\_t
+} epoll_data_t
 
 events可以是以下几个宏的集合：
 
