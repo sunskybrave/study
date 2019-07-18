@@ -209,3 +209,9 @@ LT：水平触发，效率会低于ET触发，尤其在大并发，大流量的�
 ET：边缘触发，效率非常高，在并发，大流量的情况下，会比LT少很多epoll的系统调用，因此效率高。但是对编程要求高，需要细致的处理每个请求，否则容易发生丢失事件的情况。
 
 从本质上讲：与LT相比，ET模型是通过减少系统调用来达到提高并行效率的。
+
+参考了以下的博客，致以感谢！  
+Epoll模型详解  http://blog.chinaunix.net/uid-28541347-id-4288802.html  
+Linux下的I/O复用与epoll详解  https://www.cnblogs.com/lojunren/p/3856290.html  
+彻底学会使用epoll  http://blog.chinaunix.net/uid-28541347-id-4273856.html  
+IO多路复用的三种机制Select，Poll，Epoll  https://www.jianshu.com/p/397449cadc9a  
