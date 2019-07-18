@@ -76,11 +76,11 @@ Linux中提供的epoll相关函数如下：
 
 int epoll\_create(int size);
 
-1.epoll\_create函数创建一个epoll句柄，参数size表明内核要监听的描述符数量。调用成功时返回一个epoll句柄描述符，失败时返回-1。这里的size是早期设计时产生的，那时所有需监测的文件描述符放入hash表中，而现在时放入红黑树中，所以该参数现在并没有实际用到，但是必须
+1）epoll\_create函数创建一个epoll句柄，参数size表明内核要监听的描述符数量。调用成功时返回一个epoll句柄描述符，失败时返回-1。这里的size是早期设计时产生的，那时所有需监测的文件描述符放入hash表中，而现在时放入红黑树中，所以该参数现在并没有实际用到，但是必须
 
 int epoll\_ctl(int epfd, int op, int fd, struct epoll\_event \*event);
 
-2.epoll\_ctl函数注册要监听的事件类型。四个参数解释如下：
+2）epoll\_ctl函数注册要监听的事件类型。四个参数解释如下：
 
 - epfd 表示epoll句柄
 - op 表示fd操作类型，有如下3种
@@ -130,7 +130,7 @@ EPOLLONESHOT：只监听一次事件，当监听完这次事件之后，如果�
 
 int epoll\_wait(int epfd, struct epoll\_event \* events, int maxevents, int timeout);
 
-3. epoll\_wait 函数等待事件的就绪，成功时返回就绪的事件数目，调用失败时返回 -1，等待超时返回 0。
+3）epoll\_wait 函数等待事件的就绪，成功时返回就绪的事件数目，调用失败时返回 -1，等待超时返回 0。
 
 epfd 是epoll句柄
 
@@ -168,23 +168,23 @@ ET模式详解
 
 对于读取操作：
 
-(1) 当buffer由不可读状态变为可读的时候，即由空变为不空的时候。
+1) 当buffer由不可读状态变为可读的时候，即由空变为不空的时候。
 
-(2) 当有新数据到达时，即buffer中的待读内容变多的时候。
+2) 当有新数据到达时，即buffer中的待读内容变多的时候。
 
 另外补充一点：
 
-(3) 当buffer中有数据可读（即buffer不空）且用户对相应fd进行epoll\_mod IN事件时（具体见下节内容）。
+3) 当buffer中有数据可读（即buffer不空）且用户对相应fd进行epoll\_mod IN事件时（具体见下节内容）。
 
 对于写操作：
 
-(1) 当buffer由不可写变为可写的时候，即由满状态变为不满状态的时候。
+1) 当buffer由不可写变为可写的时候，即由满状态变为不满状态的时候。
 
-(2) 当有旧数据被发送走时，即buffer中待写的内容变少得时候。
+2) 当有旧数据被发送走时，即buffer中待写的内容变少得时候。
 
 另外补充一点：
 
-(3) 当buffer中有可写空间（即buffer不满）且用户对相应fd进行epoll\_mod OUT事件时
+3) 当buffer中有可写空间（即buffer不满）且用户对相应fd进行epoll\_mod OUT事件时
 
 当epoll工作在ET模式下时，对于读操作，如果read一次没有读尽buffer中的数据，那么下次将得不到读就绪的通知，造成buffer中已有的数据无机会读出，除非有新的数据再次到达。对于写操作，主要是因为ET模式下fd通常为非阻塞造成的一个问题——如何保证将用户要求写的数据写完。
 
