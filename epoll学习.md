@@ -139,7 +139,7 @@ events 表示从内核得到的就绪事件集合
 
 maxevents 表示本次可以返回的最大事件数目，通常 maxevents参数与预分配的events数组的大小是相等的
 
-timeout 表示在没有检测到事件发生时最多等待的时间（单位为毫秒），如果 timeout为0，则表示 epoll\_wait在 rdllist链表中为空，立刻返回，不会等待。
+timeout 表示在没有检测到事件发生时最多等待的时间（单位为毫秒），如果 timeout为0，则表示 epoll\_wait在 rdllist链表中为空，立刻返回，不会等待。当timeout为-1是，epoll_wait调用将永远阻塞，直到某个时间发生。  
 
 **5.epoll的触发方式**
 
