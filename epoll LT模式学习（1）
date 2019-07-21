@@ -5,11 +5,11 @@
     
 #include "unpthread.h"    
 
-typedef struct {    
+`typedef struct {    
   pthread_t		thread_tid;		/* thread ID */
   long			thread_count;	/* # connections handled */
 } Thread;
-Thread	*tptr;		/* array of Thread structures; calloc'ed */
+Thread	*tptr;	`	/* array of Thread structures; calloc'ed */
     
 #define	MAXNCLI	32
 int		   clifd[MAXNCLI], iget, iput,*iptr;
