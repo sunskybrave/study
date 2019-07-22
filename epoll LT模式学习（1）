@@ -350,3 +350,18 @@ while (!m_bQuit)
  其实我们想达到的效果是，如果没有网络IO时间和其他任务要处理，那么这些工作线程最好直接挂起而不是空转；如果有其他任务要处理，这些工作线程要立刻能处理这些任务而不是在epoll_wait/poll/selec挂起指定时间后才开始处理这些任务。
 
  我们采取如下方法来解决该问题，以linux为例，不管epoll_fd上有没有文件描述符fd，我们都给它绑定一个默认的fd，这个fd被称为唤醒fd。当我们需要处理其他任务的时候，向这个唤醒fd上随便写入1个字节的，这样这个fd立即就变成可读的了，epoll_wait()/poll()/select()函数立即被唤醒，并返回，接下来马上就能执行handle_other_thing()，其他任务得到处理。反之，没有其他任务也没有网络IO事件时，epoll_or_select_func()就挂在那里什么也不做。
+
+这个唤醒fd，在linux平台上可以通过以下几种方法实现：
+
+1. 管道pipe，创建一个管道，将管道绑定到epoll_fd上。需要时，向管道一端写入一个字节，工作线程立即被唤醒。
+
+2. linux 2.6新增的eventfd：
+
+int eventfd(unsigned int initval, int flags);  
+步骤也是一样，将生成的eventfd绑定到epoll_fd上。需要时，向这个eventfd上写入一个字节，工作线程立即被唤醒。
+
+3. 第三种方法最方便。即linux特有的socketpair，socketpair是一对相互连接的socket，相当于服务器端和客户端的两个端点，每一端都可以读写数据。
+
+int socketpair(int domain, int type, int protocol, int sv[2]);
+
+调用这个函数返回的两个socket句柄就是sv[0]，和sv[1]，在一个其中任何一个写入字节，在另外一个收取字节。
