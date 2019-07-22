@@ -373,3 +373,9 @@ int socketpair(int domain, int type, int protocol, int sv[2]);
 
 由于在windows，select函数只支持检测socket这一种fd，所以windows上一般只能用方法3的原理。而且需要手动创建两个socket，然后一个连接另外一个，将读取的那一段绑定到select的fd上去。这在写跨两个平台代码时，需要注意的地方。
 
+
+作为服务器端程序最好对侦听socket调用setsocketopt()设置SO_REUSEADDR和SO_REUSEPORT两个标志，因为服务程序有时候会需要重启（比如调试的时候就会不断重启），如果不设置这两个标志的话，绑定端口时就会调用失败。因为一个端口使用后，即使不再使用，因为四次挥手该端口处于TIME_WAIT状态，有大约2min的MSL（Maximum Segment Lifetime，最大存活期）。这2min内，该端口是不能被重复使用的。你的服务器程序上次使用了这个端口号，接着重启，因为这个缘故，你再次绑定这个端口就会失败（bind函数调用失败）。要不你就每次重启时需要等待2min后再试（这在频繁重启程序调试是难以接收的），或者设置这种SO_REUSEADDR和SO_REUSEPORT立即回收端口使用。
+
+其实，SO_REUSEADDR在windows上和Unix平台上还有些细微的区别，我在libevent源码中看到这样的描述：
+
+在Unix平台上设置这个选项意味着，任意进程可以复用该地址；而在windows，不要阻止其他进程复用该地址。也就是在在Unix平台上，如果不设置这个选项，任意进程在一定时间内，不能bind该地址；在windows平台上，在一定时间内，其他进程不能bind该地址，而本进程却可以再次bind该地址。
