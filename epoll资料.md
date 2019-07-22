@@ -1,4 +1,4 @@
-**他山之石可以攻玉**
+#他山之石可以攻玉
 
 analogous_love的文章写的很好，此处引用下。  
 https://blog.csdn.net/analogous_love/article/details/53033793  
@@ -50,5 +50,5 @@ int socketpair(int domain, int type, int protocol, int sv[2]);
 问题讨论  
 epoll_wait对新连接socket使用的是边缘触发模式EPOLLET（edge trigger），而不是默认的水平触发模式（level trigger)。因为如果采取水平触发模式的话，主线程检测到某个客户端socket数据可读时，通知工作线程去收取该socket上的数据，这个时候主线程继续循环，只要在工作线程没有将该socket上数据全部收完，或者在工作线程收取数据的过程中，客户端有新数据到来，主线程会继续发通知（通过pthread_cond_signal()）函数，再次通知工作线程收取数据。这样会可能导致多个工作线程同时调用recv函数收取该客户端socket上的数据，这样产生的结果将会导致数据错乱。
 相反，采取边缘触发模式，只有等某个工作线程将那个客户端socket上数据全部收取完毕，主线程的epoll_wait才可能会再次触发来通知工作线程继续收取那个客户端socket新来的数据。  
-以上说法存在问题，epoll无论是工作在水平触发方式下还是工作在边缘触发方式下都存在重复触发的问题，都可以通过设置EPOLLONESHOT来解决重复触发的问题
+**以上说法存在问题，epoll无论是工作在水平触发方式下还是工作在边缘触发方式下都存在重复触发的问题，都可以通过设置EPOLLONESHOT来解决重复触发的问题**
 
