@@ -2,7 +2,7 @@
 在Linux下eclipse中进行开发，unpthread头文件主要包括了常用套接字函数的包裹函数，简化了程序的编写，具体详见《unix网络编程卷1 第三版》的引言，可从网上下载。
 主要的想法是参照《Linux高性能服务器编程》中第八章中关于epoll模式的讲解，对《unix网络编程卷1 第三版》中第30章中线程池服务器程序进行改写，其原代码如下所示。
 
-    
+```c++    
 #include "unpthread.h"    
 
 typedef struct {    
@@ -110,6 +110,7 @@ int main(int argc, char **argv)
 		Pthread_mutex_unlock(&clifd_mutex);
 	}
 }
+```
 
 这是一个最基本的多线程服务器程序，阻塞式I/O加线程池，主线程接受连接后分给工作线程执行操作，工作线程中进行对I/O的阻塞式操作
  思考的问题：
@@ -136,6 +137,7 @@ https://blog.csdn.net/wxy941011/article/details/80879225
 https://blog.csdn.net/u011344601/article/details/51997886
 3.每个工作线程都需要记录自己的线程编号，使用线程自带空间
 
+```c++
 extern "C" {
   #include <stdio.h>
   #include <stdlib.h>
@@ -333,3 +335,4 @@ int main(int argc, char **argv)
 	}
 
 }
+```
