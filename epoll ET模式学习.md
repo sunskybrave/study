@@ -44,7 +44,7 @@ if(events[i].data.fd==listenfd) //如果是监听套接字则说明有新的连�
 # 非阻塞I/O read操作
 
 ```c++
-//对于read，反复读取直到读到EOF或者EAGAIN
+                //对于read，反复读取直到读到EOF或者EAGAIN
 		ssize_t n=0,nread;
 		while(1)
 		{
@@ -127,6 +127,7 @@ if(events[i].data.fd==listenfd) //如果是监听套接字则说明有新的连�
 
 ```
 
+# 服务器总的代码
 ```c++
 extern "C" {
   #include <stdio.h>
