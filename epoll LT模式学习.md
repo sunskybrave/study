@@ -128,14 +128,22 @@ https://blog.csdn.net/wxy941011/article/details/80879225
 
 改进版本1：epoll水平触发方式+阻塞I/O
 遇到的问题：
-1.epoll在水平触发方式下可能会出现多个线程处理同一个套接字的情况，即epoll检测到套接字A可读，分配给工作线程thread1去处理，thread1很墨迹，当epoll_wait再次运行时还没将输入缓冲区中的数据处理完，此时服务器会认为有个新的读取任务来了，就分配另外一个线程thread2去处理，此时thread1和thread2同时都在处理套接字A，这显然是不安全的，可以使用EPOLLONESHOT来避免这种情况。
-2.epoll是否是线程安全的，即是否可以同时在主线程和工作线程中对同一个epoll进行添加修改删除操作？操作时需要加互斥锁吗？
-从查找到的资料来看，epoll_ctl是线程安全的，
-当一个线程阻塞在epoll_wait（）上的时候，其他线程向其中添加新的文件描述符是没问题的，如果这个文件描述符就绪的话，阻塞线程的epoll_wait（）会被唤醒。但是如果正在监听的某文件描述符被其他线程关闭的话详情见select。
-若一个文件描述符正被监听，其他线程关闭了的话，表现是未定义的。在有些 UNIX系统下，select会解除阻塞返回，而文件描述符会被认为就绪，然而对这个文件描述符进行IO操作会失败（除非这个文件描述符又被分配了），在Linux下，另一个线程关闭文件描述符没有任何影响。
-总结：除了一个线程在epoll或者select中监控一个socket时候另外一个线程对这个socket进行close这种情况，我就可以认为多个线程操作同一个epoll fd的行为是安全的
-https://blog.csdn.net/u011344601/article/details/51997886
+1.epoll在水平触发方式下可能会出现多个线程处理同一个套接字的情况，即epoll检测到套接字A可读，分配给工作线程thread1去处理，thread1很墨迹，当epoll_wait再次运行时还没将输入缓冲区中的数据处理完，此时服务器会认为有个新的读取任务来了，就分配另外一个线程thread2去处理，此时thread1和thread2同时都在处理套接字A，这显然是不安全的，可以使用EPOLLONESHOT来避免这种情况。  
+2.epoll是否是线程安全的，即是否可以同时在主线程和工作线程中对同一个epoll进行添加修改删除操作？操作时需要加互斥锁吗？   
+从查找到的资料来看，epoll_ctl是线程安全的，  
+当一个线程阻塞在epoll_wait（）上的时候，其他线程向其中添加新的文件描述符是没问题的，如果这个文件描述符就绪的话，阻塞线程的epoll_wait（）会被唤醒。但是如果正在监听的某文件描述符被其他线程关闭的话详情见select。  
+若一个文件描述符正被监听，其他线程关闭了的话，表现是未定义的。在有些 UNIX系统下，select会解除阻塞返回，而文件描述符会被认为就绪，然而对这个文件描述符进行IO操作会失败（除非这个文件描述符又被分配了），在Linux下，另一个线程关闭文件描述符没有任何影响。  
+总结：除了一个线程在epoll或者select中监控一个socket时候另外一个线程对这个socket进行close这种情况，我就可以认为多个线程操作同一个epoll fd的行为是安全的  
+https://blog.csdn.net/u011344601/article/details/51997886  
 3.每个工作线程都需要记录自己的线程编号，使用线程自带空间
+4.注意当主线程中epoll_wait仍在监听某个已连接套接字时，不可以直接在工作线程中关闭此已连接的套接字，此时epoll_wait的反应是不确定的
+  所以先从epoll中移除此已连接的套接字，再关闭此已连接的套接字
+  ```c++
+  epoll_ctl(epfd,EPOLL_CTL_DEL,sockfd,NULL); //直接删除
+  Close(sockfd);
+  ```
+  
+  服务器代码如下  
 
 ```c++
 extern "C" {
@@ -157,7 +165,6 @@ Thread	*tptr;		/* 工作线程数组首地址 */
 
 int		  *iptr,nwork; //nwork为当前的任务个数
 queue<int> work_queue; //分配给工作线程的任务，分为读任务和写任务，每次分配分配任务先压入描述符号，再压入任务类别，0为读，1为写
-queue<int> socket_close_queue; //需要关闭的套接字
 
 static int			nthreads;
 pthread_mutex_t		clifd_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -188,13 +195,12 @@ void web_child(int sockfd,int work_mode)
 	{
 		Writen(sockfd, result, 4000);
 
+		//注意当主线程中epoll_wait仍在监听某个已连接套接字时，不可以直接在工作线程中关闭此已连接的套接字，此时epoll_wait的反应是不确定的
+		//所以此处先从epoll中移除，再关闭
+
 		epoll_ctl(epfd,EPOLL_CTL_DEL,sockfd,NULL); //直接删除
+	   Close(sockfd);
 
-	   //Close(sockfd);注意不可以直接在工作线程中关闭已连接的套接字，此时epoll_wait的反应是不确定的
-
-		Pthread_mutex_lock(&clifd_mutex);
-		socket_close_queue.push(sockfd);
-		Pthread_mutex_unlock(&clifd_mutex);
 	}
 }
 
@@ -289,16 +295,6 @@ int main(int argc, char **argv)
 
 	for( int count=0; ;count++)
 	{
-		//检查是否有套接字需要关闭
-		Pthread_mutex_lock(&clifd_mutex);
-       while(!socket_close_queue.empty())
-        {
-    	   Close(socket_close_queue.front());
-    	   printf("成功关闭套接字%d\n",socket_close_queue.front());
-    	   socket_close_queue.pop();
-        }
-      Pthread_mutex_unlock(&clifd_mutex);
-
 		nfds=epoll_wait(epfd,events,100,-1);
       for(int i=0;i<nfds;++i)
        {
