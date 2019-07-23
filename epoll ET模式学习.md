@@ -43,6 +43,8 @@ if(events[i].data.fd==listenfd) //如果是监听套接字则说明有新的连�
 
 # 3.非阻塞I/O read操作
 
+边缘触发下对于非阻塞read的操作，需要反复读取直到读到EOF或者AGAIN，同时需要考虑到接受数组的大小  
+
 ```c++
                 //对于read，反复读取直到读到EOF或者EAGAIN
 		ssize_t n=0,nread;
@@ -88,6 +90,7 @@ if(events[i].data.fd==listenfd) //如果是监听套接字则说明有新的连�
 
 # 4.非阻塞I/O write操作
 
+边缘触发下对于非阻塞write的操作，需要反复写入直到写完或者EAGAIN为止  
 ```c++
                 ssize_t n,nwrite,data_size;
 		for(int i=0;i<4000;++i)
