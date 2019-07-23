@@ -104,10 +104,10 @@ if(events[i].data.fd==listenfd) //如果是监听套接字则说明有新的连�
 		while(1)
 		{
 			nwrite=write(sockfd,result+data_size-n,n);  //对于阻塞I/O的write只有缓冲区可以一次放下n个数据才返回，对于非阻塞I/O的write直接立即返回可以放下的数据大小，不足n
-          if( nwrite == n ) //一次write直接发完，直接跳出
-            {
-        	  	break;
-            }
+               		if( nwrite == n ) //一次write直接发完，直接跳出
+           		 {
+        	  	    	break;
+           		 }
 			else if( nwrite > 0 ) //一次write没有全发完，即当前套接字的发送缓冲区较小，只能发送一部分，需要再次write
 			{
 				n-=nwrite;
