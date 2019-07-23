@@ -41,6 +41,91 @@ if(events[i].data.fd==listenfd) //如果是监听套接字则说明有新的连�
     	  }
 ```
 
+# 非阻塞I/O read操作
+
+```c++
+//对于read，反复读取直到读到EOF或者EAGAIN
+		ssize_t n=0,nread;
+		while(1)
+		{
+			nread = read(sockfd,line+n,MAXLINE-1-n); //显然MAXLINE足够大，当调用read进行读取时可能一次无法读取完，反复读取直至返还EAGAIN，考虑到一个特殊的问题，就是接受缓冲区一直有新的数据在进来，此时可能会出现数据过多的问题，如果此时设定的读的值比line数组的剩余空间大，则会有数据丢失
+			if(nread>0)
+			{
+				n+=nread;  //注意记录line数组中的位置
+				if( MAXLINE-1-n > 0) //即当前line数组还没有写满，可以继续读
+				{
+					continue;
+				}
+				else if( MAXLINE-1-n == 0) //即line数组已经写满了，此时可以选择将line中的数据保存下后继续读数据或者直接跳出，在epoll中注册此套接字的可读，下次再读取
+				{
+					//必须要特殊处理此情况，如果设置要读取0个数据，也会返回0，会被误认为接受到EOF
+				   //A value of zero indicates end-of-file (except if the value of the size argument is also zero).
+					break;
+				}
+				else //显然此情况不会出现，不用考虑
+				{
+
+				}
+			}
+			else if(nread == 0 ) //读取到EOF
+			{
+				break;//此处只是简单处理，实际上可能要额外处理EOF
+			}
+			else if(errno == EINTR) //被中断打断，即使是非阻塞I/O仍然可能会被EINTR打断
+			{
+				continue;
+			}
+			else if(errno == EAGAIN)  //缓冲区数据读取完，直接跳出
+			{
+				break;
+			}
+			else //read出错
+			{
+				err_quit("read error");
+			}
+		}
+```
+
+# 非阻塞I/O write操作
+
+```c++
+                ssize_t n,nwrite,data_size;
+		for(int i=0;i<4000;++i)
+		{
+			result[i]='a';
+		}
+		result[4000]='\0';
+		n=data_size=strlen(result);
+
+		//对于write，反复写直到写完
+		while(n>0)
+		{
+			nwrite=write(sockfd,result+data_size-n,n);
+
+			if( nwrite > 0 ) //一次write没有全发完，即当前套接字的发送缓冲区较小，只能发送一部分，需要再次write
+			{
+				n-=nwrite;
+				continue;
+			}
+			else if( errno == EINTR)  //被中断打断，即使是非阻塞I/O仍然可能会被EINTR打断
+			{
+				continue;
+			}
+			else if( errno == EAGAIN)  //write上读取到EAGAIN,一种简单而常见的做法是直接跳出
+			{
+				//如果直接跳出就存在问题，即当前的数据并没有完全发完，想到的改进方法是在此时等待一定间隔后再次尝试
+				usleep(100); //睡眠0.1秒后再次尝试读
+				continue;
+			}
+			else  //write出错
+			{
+				err_quit("write error");
+			}
+		}
+
+		epoll_ctl(epfd,EPOLL_CTL_DEL,sockfd,NULL); //直接删除
+
+```
 
 ```c++
 extern "C" {
