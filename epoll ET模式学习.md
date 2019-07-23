@@ -46,6 +46,7 @@ if(events[i].data.fd==listenfd) //如果是监听套接字则说明有新的连�
 边缘触发下对于非阻塞read的操作，需要反复读取直到读到EOF或者AGAIN，同时需要考虑到接受数组的大小  
 
 ```c++
+                char  line[MAXLINE], result[MAXN];
                 //对于read，反复读取直到读到EOF或者EAGAIN
 		ssize_t n=0,nread;
 		while(1)
@@ -175,7 +176,11 @@ void web_child(int sockfd,int work_mode)
 		while(1)
 		{
 			nread = read(sockfd,line+n,MAXLINE-1-n); //显然MAXLINE足够大，当调用read进行读取时可能一次无法读取完，反复读取直至返还EAGAIN，考虑到一个特殊的问题，就是接受缓冲区一直有新的数据在进来，此时可能会出现数据过多的问题，如果此时设定的读的值比line数组的剩余空间大，则会有数据丢失
-			if(nread>0)
+			if( nread == MAXLINE-1-n ) //即一次读取成功
+			{
+				break;
+			}
+			else if( nread>0 )
 			{
 				n+=nread;  //注意记录line数组中的位置
 				if( MAXLINE-1-n > 0) //即当前line数组还没有写满，可以继续读
@@ -227,11 +232,14 @@ void web_child(int sockfd,int work_mode)
 		n=data_size=strlen(result);
 
 		//对于write，反复写直到写完
-		while(n>0)
+		while(1)
 		{
-			nwrite=write(sockfd,result+data_size-n,n);
-
-			if( nwrite > 0 ) //一次write没有全发完，即当前套接字的发送缓冲区较小，只能发送一部分，需要再次write
+			nwrite=write(sockfd,result+data_size-n,n);  //对于阻塞I/O的write只有缓冲区可以一次放下n个数据才返回，对于非阻塞I/O的write直接立即返回可以放下的数据大小，不足n
+          if( nwrite == n ) //一次write直接发完，直接跳出
+            {
+        	  	break;
+            }
+			else if( nwrite > 0 ) //一次write没有全发完，即当前套接字的发送缓冲区较小，只能发送一部分，需要再次write
 			{
 				n-=nwrite;
 				continue;
