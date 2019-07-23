@@ -75,7 +75,11 @@ if(events[i].data.fd==listenfd) //如果是监听套接字则说明有新的连�
 			}
 			else if(nread == 0 ) //读取到EOF
 			{
-				break;//此处只是简单处理，实际上可能要额外处理EOF
+				//注意当主线程中epoll_wait仍在监听某个已连接套接字时，不可以直接在工作线程中关闭此已连接的套接字，此时epoll_wait的反应是不确定的
+				//所以此处先从epoll中移除，再关闭
+				epoll_ctl(epfd,EPOLL_CTL_DEL,sockfd,NULL); //直接删除
+				Close(sockfd);
+				return;
 			}
 			else if(errno == EINTR) //被中断打断，即使是非阻塞I/O仍然可能会被EINTR打断
 			{
@@ -152,7 +156,6 @@ Thread	*tptr;		/* 工作线程数组首地址 */
 
 int		  *iptr,nwork; //nwork为当前的任务个数
 queue<int> work_queue; //分配给工作线程的任务，分为读任务和写任务，每次分配分配任务先压入描述符号，再压入任务类别，0为读，1为写
-queue<int> socket_close_queue; //需要关闭的套接字
 
 static int			nthreads;
 pthread_mutex_t		clifd_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -173,6 +176,7 @@ void web_child(int sockfd,int work_mode)
 	{
 		//对于read，反复读取直到读到EOF或者EAGAIN
 		ssize_t n=0,nread;
+		memset(line,'\0',MAXLINE); //初始化为'\0'
 		while(1)
 		{
 			nread = read(sockfd,line+n,MAXLINE-1-n); //显然MAXLINE足够大，当调用read进行读取时可能一次无法读取完，反复读取直至返还EAGAIN，考虑到一个特殊的问题，就是接受缓冲区一直有新的数据在进来，此时可能会出现数据过多的问题，如果此时设定的读的值比line数组的剩余空间大，则会有数据丢失
@@ -198,9 +202,13 @@ void web_child(int sockfd,int work_mode)
 
 				}
 			}
-			else if(nread == 0 ) //读取到EOF
+			else if(nread == 0 ) //读取到EOF,关闭套接字
 			{
-				break;//此处只是简单处理，实际上可能要额外处理EOF
+				//注意当主线程中epoll_wait仍在监听某个已连接套接字时，不可以直接在工作线程中关闭此已连接的套接字，此时epoll_wait的反应是不确定的
+				//所以此处先从epoll中移除，再关闭
+				epoll_ctl(epfd,EPOLL_CTL_DEL,sockfd,NULL); //直接删除
+				Close(sockfd);
+				return;
 			}
 			else if(errno == EINTR) //被中断打断，即使是非阻塞I/O仍然可能会被EINTR打断
 			{
@@ -260,11 +268,11 @@ void web_child(int sockfd,int work_mode)
 			}
 		}
 
-		epoll_ctl(epfd,EPOLL_CTL_DEL,sockfd,NULL); //直接删除
+		//注意当主线程中epoll_wait仍在监听某个已连接套接字时，不可以直接在工作线程中关闭此已连接的套接字，此时epoll_wait的反应是不确定的
+		//所以此处先从epoll中移除，再关闭
 
-		Pthread_mutex_lock(&clifd_mutex);
-		socket_close_queue.push(sockfd);
-		Pthread_mutex_unlock(&clifd_mutex);
+		epoll_ctl(epfd,EPOLL_CTL_DEL,sockfd,NULL); //直接删除
+		Close(sockfd);
 	}
 }
 
@@ -368,16 +376,6 @@ int main(int argc, char **argv)
 	for( int count=0; ;count++)
 	{
 		//printf("count = %d\n",count);
-		//检查是否有套接字需要关闭
-		Pthread_mutex_lock(&clifd_mutex);
-       while(!socket_close_queue.empty())
-        {
-    	   Close(socket_close_queue.front());
-    	   printf("成功关闭套接字%d\n",socket_close_queue.front());
-    	   socket_close_queue.pop();
-        }
-      Pthread_mutex_unlock(&clifd_mutex);
-
 		nfds=epoll_wait(epfd,events,100,-1);
       for(int i=0;i<nfds;++i)
        {
