@@ -9,6 +9,39 @@
 最好设置监听套接字为非阻塞套接字，因为服务器繁忙时不会立即调用accept，而此时客户可能会终止此连接并发送RST，此时服务器收到客户的RST,随后从已连接队列中移除这个连接，此后再调用accept，此时如果没有新的连接到来，线程会阻塞在accept的调用上
 
 ```c++
+if(events[i].data.fd==listenfd) //如果是监听套接字则说明有新的连接，此时循环accept，并注册新连接的可读
+    	  {
+    		  //printf("监听到连接\n");
+    		  clilen = addrlen;
+    		  while(1)//边缘触发方式下可能有多个连接需要接受，使用while
+    		  {
+    			  //printf("%d\n",connfd);
+    			  //注册已连接套接字
+    			  connfd = accept(listenfd, cliaddr, &clilen);
+    			  if( connfd > 0 )
+    			  {
+    				  set_nonblocking(connfd); //设置I/O非阻塞
+    				  ev.data.fd=connfd;
+    				  ev.events=EPOLLIN | EPOLLET | EPOLLONESHOT; //使用边缘触发方式，注意边缘触发下也存在可能多个线程处理同一个套接字，需要设置EPOLLONESHOT
+    				  epoll_ctl(epfd,EPOLL_CTL_ADD,connfd,&ev);
+    			  }
+    			  else if( errno == EINTR || errno == ECONNABORTED || errno == EPROTO ) //忽略错误
+    			  {
+    				  continue;
+    			  }
+    			  else if( errno == EWOULDBLOCK )
+    			  {
+    				  break;
+    			  }
+    			  else
+    			  {
+    				  err_quit("accept error");
+    			  }
+    		  }
+```
+
+
+```c++
 extern "C" {
   #include <stdio.h>
   #include <stdlib.h>
